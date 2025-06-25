@@ -3,56 +3,190 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Планировщик постов в Telegram</title>
+<title>Планировщик постов Telegram</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 20px; max-width: 600px; }
-  label { display: block; margin-top: 15px; }
-  input, textarea, select, button { width: 100%; padding: 8px; margin-top: 5px; }
-  .channels-list { margin-top: 10px; }
-  .channel-item { margin-bottom: 5px; }
-  .inline-buttons button { margin-right: 5px; margin-top: 10px; }
+  /* Базовый стиль и фон */
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+  body {
+    margin: 0; padding: 0;
+    font-family: 'Montserrat', sans-serif;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+  }
+
+  .container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 30px 40px;
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    backdrop-filter: blur(8.5px);
+    -webkit-backdrop-filter: blur(8.5px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  h1 {
+    margin-top: 0;
+    font-weight: 600;
+    font-size: 2.2rem;
+    text-align: center;
+    margin-bottom: 30px;
+    letter-spacing: 1.1px;
+  }
+
+  label {
+    display: block;
+    margin-top: 20px;
+    font-weight: 600;
+    font-size: 1rem;
+    user-select: none;
+  }
+
+  input[type="text"],
+  input[type="date"],
+  input[type="time"],
+  input[type="file"],
+  textarea {
+    margin-top: 8px;
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    font-family: 'Montserrat', sans-serif;
+    outline: none;
+    transition: background-color 0.3s ease;
+  }
+
+  input[type="text"]:focus,
+  input[type="date"]:focus,
+  input[type="time"]:focus,
+  textarea:focus {
+    background-color: rgba(255 255 255 / 0.3);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .inline-buttons {
+    margin-top: 10px;
+  }
+
+  button {
+    cursor: pointer;
+    background: #6c63ff;
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 14px 0;
+    width: 100%;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(108, 99, 255, 0.6);
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    user-select: none;
+  }
+  button:hover {
+    background: #5848d4;
+    transform: scale(1.05);
+  }
+  button:active {
+    transform: scale(0.95);
+  }
+  button:disabled {
+    background: #9999cc;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .channels-list {
+    margin-top: 10px;
+  }
+
+  .channel-item {
+    background: rgba(255 255 255 / 0.15);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .channel-item button {
+    width: auto;
+    padding: 5px 12px;
+    font-weight: 600;
+    background: #ff6b6b;
+    box-shadow: none;
+  }
+  .channel-item button:hover {
+    background: #e04848;
+  }
+
+  #output {
+    margin-top: 25px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    font-weight: 600;
+    color: #bbffbb;
+    min-height: 40px;
+  }
 </style>
 </head>
 <body>
 
-<h1>Планировщик постов Telegram</h1>
+<div class="container">
+  <h1>Планировщик постов Telegram</h1>
 
-<!-- Добавление каналов -->
-<label>Добавить канал (@username или ID):</label>
-<input type="text" id="channelInput" placeholder="@example_channel" />
-<div class="inline-buttons">
-  <button id="addChannelBtn">Добавить канал</button>
+  <label for="usernameInput">Ваше имя (для запоминания):</label>
+  <input type="text" id="usernameInput" placeholder="Введите ваше имя" />
+
+  <label>Добавить канал (@username или ID):</label>
+  <input type="text" id="channelInput" placeholder="@example_channel" />
+  <div class="inline-buttons">
+    <button id="addChannelBtn">Добавить канал</button>
+  </div>
+
+  <div>
+    <h3>Ваши каналы:</h3>
+    <div id="channelsContainer" class="channels-list"></div>
+  </div>
+
+  <label for="postText">Текст поста:</label>
+  <textarea id="postText" placeholder="Введите текст поста"></textarea>
+
+  <label for="mediaInput">Прикрепить фото или видео:</label>
+  <input type="file" id="mediaInput" accept="image/*,video/*" />
+
+  <label for="postDate">Дата публикации:</label>
+  <input type="date" id="postDate" />
+
+  <label for="postTime">Время публикации (24ч, формат HH:MM):</label>
+  <input type="time" id="postTime" />
+
+  <button id="schedulePostBtn" style="margin-top:30px;">Запланировать пост</button>
+
+  <div id="output"></div>
 </div>
-
-<div>
-  <h3>Ваши каналы:</h3>
-  <div id="channelsContainer" class="channels-list"></div>
-</div>
-
-<!-- Текст поста -->
-<label>Текст поста:</label>
-<textarea id="postText" rows="4" placeholder="Введите текст поста"></textarea>
-
-<!-- Загрузка медиа -->
-<label>Прикрепить фото или видео:</label>
-<input type="file" id="mediaInput" accept="image/*,video/*" />
-
-<!-- Выбор даты -->
-<label>Дата публикации:</label>
-<input type="date" id="postDate" />
-
-<!-- Время публикации -->
-<label>Время публикации (24ч, формат HH:MM):</label>
-<input type="time" id="postTime" />
-
-<!-- Кнопка отправки -->
-<button id="schedulePostBtn" style="margin-top:20px;">Запланировать пост</button>
-
-<!-- Вывод -->
-<div id="output" style="margin-top:20px; color: green;"></div>
 
 <script>
-  const channels = [];
+  const channels = JSON.parse(localStorage.getItem('channels') || '[]');
+  const usernameInput = document.getElementById('usernameInput');
+  const savedName = localStorage.getItem('username') || '';
+  if (savedName) usernameInput.value = savedName;
 
   const channelsContainer = document.getElementById('channelsContainer');
   const channelInput = document.getElementById('channelInput');
@@ -62,20 +196,31 @@
 
   function renderChannels() {
     channelsContainer.innerHTML = '';
+    if (channels.length === 0) {
+      channelsContainer.innerHTML = '<em>Пока нет каналов</em>';
+      return;
+    }
     channels.forEach((ch, idx) => {
       const div = document.createElement('div');
       div.className = 'channel-item';
       div.textContent = ch;
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Удалить';
-      delBtn.style.marginLeft = '10px';
       delBtn.onclick = () => {
         channels.splice(idx, 1);
+        saveChannels();
         renderChannels();
       };
       div.appendChild(delBtn);
       channelsContainer.appendChild(div);
     });
+  }
+
+  function saveChannels() {
+    localStorage.setItem('channels', JSON.stringify(channels));
+  }
+  function saveUsername() {
+    localStorage.setItem('username', usernameInput.value.trim());
   }
 
   addChannelBtn.onclick = () => {
@@ -93,9 +238,13 @@
       return;
     }
     channels.push(val);
-    channelInput.value = '';
+    saveChannels();
     renderChannels();
+    channelInput.value = '';
   };
+
+  usernameInput.onchange = saveUsername;
+  usernameInput.oninput = saveUsername;
 
   schedulePostBtn.onclick = () => {
     const text = document.getElementById('postText').value.trim();
@@ -123,25 +272,17 @@
       return;
     }
 
-    // Здесь можно отправлять данные на сервер для планирования поста.
-    // Для примера — просто выводим в окно.
-    output.textContent = `Пост запланирован на ${dateTime.toLocaleString()} для каналов: ${channels.join(', ')}`;
+    output.textContent = `Пост запланирован на ${dateTime.toLocaleString()} для каналов: ${channels.join(', ')}\nПользователь: ${usernameInput.value.trim()}`;
 
-    // Для реального использования — отправить через fetch или WebSocket на бекенд
-    // например:
-    // const formData = new FormData();
-    // formData.append('channels', JSON.stringify(channels));
-    // formData.append('text', text);
-    // if(media) formData.append('media', media);
-    // formData.append('datetime', dateTime.toISOString());
-    // fetch('/api/schedule', { method: 'POST', body: formData })
-
-    // Очистка формы (по желанию)
+    // Очистка формы (не обязательно)
     document.getElementById('postText').value = '';
     document.getElementById('postDate').value = '';
     document.getElementById('postTime').value = '';
     document.getElementById('mediaInput').value = '';
   };
+
+  // Инициализация
+  renderChannels();
 </script>
 
 </body>
