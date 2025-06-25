@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Планировщик постов в Telegram</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; max-width: 600px; }
+  label { display: block; margin-top: 15px; }
+  input, textarea, select, button { width: 100%; padding: 8px; margin-top: 5px; }
+  .channels-list { margin-top: 10px; }
+  .channel-item { margin-bottom: 5px; }
+  .inline-buttons button { margin-right: 5px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Планировщик постов Telegram</h1>
+
+<!-- Добавление каналов -->
+<label>Добавить канал (@username или ID):</label>
+<input type="text" id="channelInput" placeholder="@example_channel" />
+<div class="inline-buttons">
+  <button id="addChannelBtn">Добавить канал</button>
+</div>
+
+<div>
+  <h3>Ваши каналы:</h3>
+  <div id="channelsContainer" class="channels-list"></div>
+</div>
+
+<!-- Текст поста -->
+<label>Текст поста:</label>
+<textarea id="postText" rows="4" placeholder="Введите текст поста"></textarea>
+
+<!-- Загрузка медиа -->
+<label>Прикрепить фото или видео:</label>
+<input type="file" id="mediaInput" accept="image/*,video/*" />
+
+<!-- Выбор даты -->
+<label>Дата публикации:</label>
+<input type="date" id="postDate" />
+
+<!-- Время публикации -->
+<label>Время публикации (24ч, формат HH:MM):</label>
+<input type="time" id="postTime" />
+
+<!-- Кнопка отправки -->
+<button id="schedulePostBtn" style="margin-top:20px;">Запланировать пост</button>
+
+<!-- Вывод -->
+<div id="output" style="margin-top:20px; color: green;"></div>
+
+<script>
+  const channels = [];
+
+  const channelsContainer = document.getElementById('channelsContainer');
+  const channelInput = document.getElementById('channelInput');
+  const addChannelBtn = document.getElementById('addChannelBtn');
+  const schedulePostBtn = document.getElementById('schedulePostBtn');
+  const output = document.getElementById('output');
+
+  function renderChannels() {
+    channelsContainer.innerHTML = '';
+    channels.forEach((ch, idx) => {
+      const div = document.createElement('div');
+      div.className = 'channel-item';
+      div.textContent = ch;
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Удалить';
+      delBtn.style.marginLeft = '10px';
+      delBtn.onclick = () => {
+        channels.splice(idx, 1);
+        renderChannels();
+      };
+      div.appendChild(delBtn);
+      channelsContainer.appendChild(div);
+    });
+  }
+
+  addChannelBtn.onclick = () => {
+    const val = channelInput.value.trim();
+    if (!val) {
+      alert('Введите название канала');
+      return;
+    }
+    if (!val.startsWith('@') && isNaN(val)) {
+      alert('Канал должен начинаться с @ или быть числовым ID');
+      return;
+    }
+    if (channels.includes(val)) {
+      alert('Канал уже добавлен');
+      return;
+    }
+    channels.push(val);
+    channelInput.value = '';
+    renderChannels();
+  };
+
+  schedulePostBtn.onclick = () => {
+    const text = document.getElementById('postText').value.trim();
+    const date = document.getElementById('postDate').value;
+    const time = document.getElementById('postTime').value;
+    const media = document.getElementById('mediaInput').files[0];
+
+    if (channels.length === 0) {
+      alert('Добавьте хотя бы один канал');
+      return;
+    }
+    if (!text && !media) {
+      alert('Введите текст или прикрепите медиа');
+      return;
+    }
+    if (!date || !time) {
+      alert('Выберите дату и время публикации');
+      return;
+    }
+
+    // Формируем дату-время публикации
+    const dateTime = new Date(`${date}T${time}:00`);
+    if (dateTime <= new Date()) {
+      alert('Дата и время должны быть в будущем');
+      return;
+    }
+
+    // Здесь можно отправлять данные на сервер для планирования поста.
+    // Для примера — просто выводим в окно.
+    output.textContent = `Пост запланирован на ${dateTime.toLocaleString()} для каналов: ${channels.join(', ')}`;
+
+    // Для реального использования — отправить через fetch или WebSocket на бекенд
+    // например:
+    // const formData = new FormData();
+    // formData.append('channels', JSON.stringify(channels));
+    // formData.append('text', text);
+    // if(media) formData.append('media', media);
+    // formData.append('datetime', dateTime.toISOString());
+    // fetch('/api/schedule', { method: 'POST', body: formData })
+
+    // Очистка формы (по желанию)
+    document.getElementById('postText').value = '';
+    document.getElementById('postDate').value = '';
+    document.getElementById('postTime').value = '';
+    document.getElementById('mediaInput').value = '';
+  };
+</script>
+
+</body>
+</html>
