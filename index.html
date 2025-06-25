@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Планировщик постов Telegram</title>
 <style>
-  /* Базовый стиль и фон */
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
 
   body {
@@ -17,13 +16,13 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 40px 20px;
+    padding: 20px 15px;
   }
 
   .container {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 30px 40px;
+    padding: 20px 30px;
     max-width: 600px;
     width: 100%;
     box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
@@ -35,15 +34,15 @@
   h1 {
     margin-top: 0;
     font-weight: 600;
-    font-size: 2.2rem;
+    font-size: 2rem;
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
     letter-spacing: 1.1px;
   }
 
   label {
     display: block;
-    margin-top: 20px;
+    margin-top: 15px;
     font-weight: 600;
     font-size: 1rem;
     user-select: none;
@@ -54,9 +53,9 @@
   input[type="time"],
   input[type="file"],
   textarea {
-    margin-top: 8px;
+    margin-top: 6px;
     width: 100%;
-    padding: 12px 15px;
+    padding: 10px 12px;
     border-radius: 8px;
     border: none;
     font-size: 1rem;
@@ -74,11 +73,13 @@
 
   textarea {
     resize: vertical;
-    min-height: 100px;
+    min-height: 80px;
   }
 
   .inline-buttons {
     margin-top: 10px;
+    display: flex;
+    gap: 12px;
   }
 
   button {
@@ -87,13 +88,13 @@
     color: white;
     font-weight: 600;
     border: none;
-    padding: 14px 0;
-    width: 100%;
+    padding: 12px 0;
     border-radius: 10px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     box-shadow: 0 4px 15px rgba(108, 99, 255, 0.6);
     transition: background-color 0.3s ease, transform 0.2s ease;
     user-select: none;
+    flex: 1;
   }
   button:hover {
     background: #5848d4;
@@ -136,7 +137,7 @@
   }
 
   #output {
-    margin-top: 25px;
+    margin-top: 20px;
     padding: 15px;
     background: rgba(0, 0, 0, 0.25);
     border-radius: 10px;
@@ -144,6 +145,50 @@
     color: #bbffbb;
     min-height: 40px;
   }
+
+  /* Список постов */
+  #postsHistory {
+    margin-top: 30px;
+    max-height: 180px;
+    overflow-y: auto;
+    background: rgba(255 255 255 / 0.1);
+    border-radius: 10px;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+  }
+
+  .post-item {
+    border-bottom: 1px solid rgba(255 255 255 / 0.2);
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .post-item:last-child {
+    border-bottom: none;
+  }
+  .post-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .post-status {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    user-select: none;
+  }
+  .scheduled {
+    background-color: #ffc107aa;
+    color: #3e2723;
+  }
+  .published {
+    background-color: #4caf50aa;
+    color: #0d2600;
+  }
+
 </style>
 </head>
 <body>
@@ -156,7 +201,7 @@
 
   <label>Добавить канал (@username или ID):</label>
   <input type="text" id="channelInput" placeholder="@example_channel" />
-  <div class="inline-buttons">
+  <div class="inline-buttons" style="margin-top:5px;">
     <button id="addChannelBtn">Добавить канал</button>
   </div>
 
@@ -177,13 +222,23 @@
   <label for="postTime">Время публикации (24ч, формат HH:MM):</label>
   <input type="time" id="postTime" />
 
-  <button id="schedulePostBtn" style="margin-top:30px;">Запланировать пост</button>
+  <div class="inline-buttons" style="margin-top:25px;">
+    <button id="schedulePostBtn">Запланировать пост</button>
+    <button id="publishNowBtn" style="background:#28a745; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.6);">Публиковать сейчас</button>
+  </div>
 
   <div id="output"></div>
+
+  <h3 style="margin-top:30px; user-select:none;">История постов</h3>
+  <div id="postsHistory" title="Список запланированных и опубликованных постов"></div>
 </div>
 
 <script>
+  // Данные из localStorage или пустые
   const channels = JSON.parse(localStorage.getItem('channels') || '[]');
+  const posts = JSON.parse(localStorage.getItem('posts') || '[]'); // { id, text, datetime, status }
+
+  // Элементы
   const usernameInput = document.getElementById('usernameInput');
   const savedName = localStorage.getItem('username') || '';
   if (savedName) usernameInput.value = savedName;
@@ -191,9 +246,14 @@
   const channelsContainer = document.getElementById('channelsContainer');
   const channelInput = document.getElementById('channelInput');
   const addChannelBtn = document.getElementById('addChannelBtn');
+
   const schedulePostBtn = document.getElementById('schedulePostBtn');
+  const publishNowBtn = document.getElementById('publishNowBtn');
   const output = document.getElementById('output');
 
+  const postsHistory = document.getElementById('postsHistory');
+
+  // Сохраняем и рендерим каналы
   function renderChannels() {
     channelsContainer.innerHTML = '';
     if (channels.length === 0) {
@@ -215,14 +275,18 @@
       channelsContainer.appendChild(div);
     });
   }
-
   function saveChannels() {
     localStorage.setItem('channels', JSON.stringify(channels));
   }
+
+  // Сохраняем имя пользователя
   function saveUsername() {
     localStorage.setItem('username', usernameInput.value.trim());
   }
+  usernameInput.onchange = saveUsername;
+  usernameInput.oninput = saveUsername;
 
+  // Добавляем канал
   addChannelBtn.onclick = () => {
     const val = channelInput.value.trim();
     if (!val) {
@@ -243,46 +307,124 @@
     channelInput.value = '';
   };
 
-  usernameInput.onchange = saveUsername;
-  usernameInput.oninput = saveUsername;
-
-  schedulePostBtn.onclick = () => {
-    const text = document.getElementById('postText').value.trim();
-    const date = document.getElementById('postDate').value;
-    const time = document.getElementById('postTime').value;
-    const media = document.getElementById('mediaInput').files[0];
-
+  // Проверка данных для поста
+  function validatePost(text, date, time, media, requireFuture = true) {
     if (channels.length === 0) {
       alert('Добавьте хотя бы один канал');
-      return;
+      return false;
     }
     if (!text && !media) {
       alert('Введите текст или прикрепите медиа');
-      return;
+      return false;
     }
     if (!date || !time) {
       alert('Выберите дату и время публикации');
-      return;
+      return false;
     }
-
-    // Формируем дату-время публикации
     const dateTime = new Date(`${date}T${time}:00`);
-    if (dateTime <= new Date()) {
+    if (requireFuture && dateTime <= new Date()) {
       alert('Дата и время должны быть в будущем');
+      return false;
+    }
+    return true;
+  }
+
+  // Сохраняем посты
+  function savePosts() {
+    localStorage.setItem('posts', JSON.stringify(posts));
+  }
+
+  // Добавляем пост в историю
+  function addPostToHistory(post) {
+    posts.unshift(post);
+    savePosts();
+    renderPosts();
+  }
+
+  // Рендер истории постов
+  function renderPosts() {
+    postsHistory.innerHTML = '';
+    if (posts.length === 0) {
+      postsHistory.innerHTML = '<em>Постов пока нет</em>';
       return;
     }
+    posts.forEach(post => {
+      const div = document.createElement('div');
+      div.className = 'post-item';
 
-    output.textContent = `Пост запланирован на ${dateTime.toLocaleString()} для каналов: ${channels.join(', ')}\nПользователь: ${usernameInput.value.trim()}`;
+      const txt = document.createElement('div');
+      txt.className = 'post-text';
+      txt.title = post.text;
+      txt.textContent = post.text.length > 70 ? post.text.slice(0, 67) + '...' : post.text;
 
-    // Очистка формы (не обязательно)
+      const status = document.createElement('div');
+      status.className = 'post-status ' + (post.status === 'published' ? 'published' : 'scheduled');
+      status.textContent = post.status === 'published' ? 'Опубликован' : 'Запланирован';
+
+      div.appendChild(txt);
+      div.appendChild(status);
+      postsHistory.appendChild(div);
+    });
+  }
+
+  // Публикация поста (эмуляция)
+  function publishPost(text, media, dateTime, isNow = false) {
+    // Просто для примера — реальной публикации тут нет
+    const id = Date.now();
+    const post = {
+      id,
+      text,
+      datetime: dateTime.toISOString(),
+      status: isNow ? 'published' : 'scheduled',
+    };
+    addPostToHistory(post);
+    output.textContent = isNow ? 'Пост опубликован!' : 'Пост запланирован!';
+  }
+
+  // Обработчики кнопок
+  schedulePostBtn.onclick = () => {
+    const text = document.getElementById('postText').value.trim();
+    const mediaInput = document.getElementById('mediaInput');
+    const media = mediaInput.files.length > 0 ? mediaInput.files[0] : null;
+    const date = document.getElementById('postDate').value;
+    const time = document.getElementById('postTime').value;
+
+    if (!validatePost(text, date, time, media, true)) return;
+
+    const dateTime = new Date(`${date}T${time}:00`);
+    publishPost(text, media, dateTime, false);
+
+    // Очистка формы, кроме каналов и имени
     document.getElementById('postText').value = '';
+    mediaInput.value = '';
     document.getElementById('postDate').value = '';
     document.getElementById('postTime').value = '';
-    document.getElementById('mediaInput').value = '';
+  };
+
+  publishNowBtn.onclick = () => {
+    const text = document.getElementById('postText').value.trim();
+    const mediaInput = document.getElementById('mediaInput');
+    const media = mediaInput.files.length > 0 ? mediaInput.files[0] : null;
+
+    // Для публикации сейчас дата и время не важны, ставим текущие
+    const now = new Date();
+
+    // Тут можно не требовать дату и время
+    if (!validatePost(text, now.toISOString().split('T')[0], now.toTimeString().slice(0,5), media, false)) return;
+
+    publishPost(text, media, now, true);
+
+    // Очистка формы
+    document.getElementById('postText').value = '';
+    mediaInput.value = '';
+    document.getElementById('postDate').value = '';
+    document.getElementById('postTime').value = '';
   };
 
   // Инициализация
   renderChannels();
+  renderPosts();
+
 </script>
 
 </body>
