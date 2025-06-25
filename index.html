@@ -51,7 +51,6 @@
   input[type="text"],
   input[type="date"],
   input[type="time"],
-  input[type="file"],
   textarea {
     margin-top: 6px;
     width: 100%;
@@ -144,6 +143,7 @@
     font-weight: 600;
     color: #bbffbb;
     min-height: 40px;
+    user-select: text;
   }
 
   /* Список постов */
@@ -213,9 +213,6 @@
   <label for="postText">Текст поста:</label>
   <textarea id="postText" placeholder="Введите текст поста"></textarea>
 
-  <label for="mediaInput">Прикрепить фото или видео:</label>
-  <input type="file" id="mediaInput" accept="image/*,video/*" />
-
   <label for="postDate">Дата публикации:</label>
   <input type="date" id="postDate" />
 
@@ -234,11 +231,11 @@
 </div>
 
 <script>
-  // Данные из localStorage или пустые
-  const channels = JSON.parse(localStorage.getItem('channels') || '[]');
-  const posts = JSON.parse(localStorage.getItem('posts') || '[]'); // { id, text, datetime, status }
+  const BOT_TOKEN = '123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmno'; // Вставь сюда токен своего Telegram бота
 
-  // Элементы
+  const channels = JSON.parse(localStorage.getItem('channels') || '[]');
+  const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+
   const usernameInput = document.getElementById('usernameInput');
   const savedName = localStorage.getItem('username') || '';
   if (savedName) usernameInput.value = savedName;
@@ -253,7 +250,6 @@
 
   const postsHistory = document.getElementById('postsHistory');
 
-  // Сохраняем и рендерим каналы
   function renderChannels() {
     channelsContainer.innerHTML = '';
     if (channels.length === 0) {
@@ -279,14 +275,12 @@
     localStorage.setItem('channels', JSON.stringify(channels));
   }
 
-  // Сохраняем имя пользователя
   function saveUsername() {
     localStorage.setItem('username', usernameInput.value.trim());
   }
   usernameInput.onchange = saveUsername;
   usernameInput.oninput = saveUsername;
 
-  // Добавляем канал
   addChannelBtn.onclick = () => {
     const val = channelInput.value.trim();
     if (!val) {
@@ -307,14 +301,13 @@
     channelInput.value = '';
   };
 
-  // Проверка данных для поста
-  function validatePost(text, date, time, media, requireFuture = true) {
+  function validatePost(text, date, time, requireFuture = true) {
     if (channels.length === 0) {
       alert('Добавьте хотя бы один канал');
       return false;
     }
-    if (!text && !media) {
-      alert('Введите текст или прикрепите медиа');
+    if (!text) {
+      alert('Введите текст поста');
       return false;
     }
     if (!date || !time) {
@@ -329,19 +322,16 @@
     return true;
   }
 
-  // Сохраняем посты
   function savePosts() {
     localStorage.setItem('posts', JSON.stringify(posts));
   }
 
-  // Добавляем пост в историю
   function addPostToHistory(post) {
     posts.unshift(post);
     savePosts();
     renderPosts();
   }
 
-  // Рендер истории постов
   function renderPosts() {
     postsHistory.innerHTML = '';
     if (posts.length === 0) {
@@ -367,64 +357,81 @@
     });
   }
 
-  // Публикация поста (эмуляция)
-  function publishPost(text, media, dateTime, isNow = false) {
-    // Просто для примера — реальной публикации тут нет
-    const id = Date.now();
-    const post = {
-      id,
-      text,
-      datetime: dateTime.toISOString(),
-      status: isNow ? 'published' : 'scheduled',
-    };
-    addPostToHistory(post);
-    output.textContent = isNow ? 'Пост опубликован!' : 'Пост запланирован!';
+  async function sendMessageToTelegram(channel, text) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: channel,
+          text: text
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.description || 'Ошибка API');
+      return true;
+    } catch (e) {
+      throw e;
+    }
   }
 
-  // Обработчики кнопок
-  schedulePostBtn.onclick = () => {
+  publishNowBtn.onclick = async () => {
+    output.textContent = '';
     const text = document.getElementById('postText').value.trim();
-    const mediaInput = document.getElementById('mediaInput');
-    const media = mediaInput.files.length > 0 ? mediaInput.files[0] : null;
     const date = document.getElementById('postDate').value;
     const time = document.getElementById('postTime').value;
 
-    if (!validatePost(text, date, time, media, true)) return;
+    if (!validatePost(text, date, time, false)) return;
 
-    const dateTime = new Date(`${date}T${time}:00`);
-    publishPost(text, media, dateTime, false);
+    output.textContent = 'Отправка...';
 
-    // Очистка формы, кроме каналов и имени
-    document.getElementById('postText').value = '';
-    mediaInput.value = '';
-    document.getElementById('postDate').value = '';
-    document.getElementById('postTime').value = '';
+    let successCount = 0;
+    let errorMessages = [];
+
+    for (const ch of channels) {
+      try {
+        await sendMessageToTelegram(ch, text);
+        successCount++;
+      } catch (e) {
+        errorMessages.push(`${ch}: ${e.message}`);
+      }
+    }
+
+    if (successCount > 0) {
+      output.textContent = `Успешно отправлено в ${successCount} канал(ов).`;
+      addPostToHistory({
+        id: Date.now(),
+        text: text,
+        datetime: new Date().toISOString(),
+        status: 'published'
+      });
+    }
+    if (errorMessages.length > 0) {
+      output.textContent += '\nОшибки:\n' + errorMessages.join('\n');
+    }
   };
 
-  publishNowBtn.onclick = () => {
+  schedulePostBtn.onclick = () => {
     const text = document.getElementById('postText').value.trim();
-    const mediaInput = document.getElementById('mediaInput');
-    const media = mediaInput.files.length > 0 ? mediaInput.files[0] : null;
+    const date = document.getElementById('postDate').value;
+    const time = document.getElementById('postTime').value;
 
-    // Для публикации сейчас дата и время не важны, ставим текущие
-    const now = new Date();
+    if (!validatePost(text, date, time)) return;
 
-    // Тут можно не требовать дату и время
-    if (!validatePost(text, now.toISOString().split('T')[0], now.toTimeString().slice(0,5), media, false)) return;
+    const dt = new Date(`${date}T${time}:00`);
 
-    publishPost(text, media, now, true);
+    addPostToHistory({
+      id: Date.now(),
+      text: text,
+      datetime: dt.toISOString(),
+      status: 'scheduled'
+    });
 
-    // Очистка формы
-    document.getElementById('postText').value = '';
-    mediaInput.value = '';
-    document.getElementById('postDate').value = '';
-    document.getElementById('postTime').value = '';
+    output.textContent = 'Пост запланирован.';
   };
 
-  // Инициализация
   renderChannels();
   renderPosts();
-
 </script>
 
 </body>
